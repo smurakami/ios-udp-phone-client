@@ -15,8 +15,8 @@ class ViewController: UIViewController, UDPDelegate {
     
     let engine = AVAudioEngine()
     
-    let player = AVAudioPlayerNode()
-    var outputBuffer = AVAudioPCMBuffer()
+//    let player = AVAudioPlayerNode()
+//    var outputBuffer = AVAudioPCMBuffer()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,12 +27,12 @@ class ViewController: UIViewController, UDPDelegate {
         print(udp.getIPAddress())
         
         let bufferSize = UInt32(16537) // 決め打ち。ここを動的に変更できるようにはしたい。
-        outputBuffer = AVAudioPCMBuffer(PCMFormat: player.outputFormatForBus(0), frameCapacity: bufferSize)
-        outputBuffer.frameLength = bufferSize
+//        outputBuffer = AVAudioPCMBuffer(PCMFormat: player.outputFormatForBus(0), frameCapacity: bufferSize)
+//        outputBuffer.frameLength = bufferSize
 
         
-        engine.attachNode(player)
-        engine.connect(player, to: engine.mainMixerNode, format: player.outputFormatForBus(0))
+//        engine.attachNode(player)
+//        engine.connect(player, to: engine.mainMixerNode, format: player.outputFormatForBus(0))
         
         if let input = engine.inputNode {
             let bus = 0
@@ -45,25 +45,25 @@ class ViewController: UIViewController, UDPDelegate {
 //                    dataArray[i] = floats[i]
 //                }
                 
-                let frameLength = Int(self.outputBuffer.frameLength)
+                let frameLength = Int(buffer.frameLength)
                 let frameStep = Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount)
                 
                 let sendSize = 1024
                 
                 var dataArray = [Float](count: sendSize, repeatedValue: 0)
                 
-                var received = [Float](count: sendSize, repeatedValue: 0)
+//                var received = [Float](count: sendSize, repeatedValue: 0)
                 
-                for var start = 0; start < Int(self.outputBuffer.frameLength); start += sendSize {
+                for var start = 0; start < Int(buffer.frameLength); start += sendSize {
                     let count = min(frameLength - start, sendSize)
                     for var i = 0; i < count; i += frameStep {
                         dataArray[i] = floats[start + i]
                     }
                     let data = NSData(bytes: dataArray, length: (sizeof(Float) * count))
                     
-                    data.getBytes(&received, length: Int(data.length))
-                    let receivedCount = Int(data.length / sizeof(Float))
-                    
+                    self.udp.sendData(data)
+//                    data.getBytes(&received, length: Int(data.length))
+//                    let receivedCount = Int(data.length / sizeof(Float))
                 }
                 
 //                let data = NSData(bytes: dataArray, length: (sizeof(Float) * dataArray.count))
@@ -77,11 +77,11 @@ class ViewController: UIViewController, UDPDelegate {
 //                var received = [Float](count: dataArray.count, repeatedValue: 0)
 //                data.getBytes(&received, length: Int(sizeof(Float) * received.count))
                 
-                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
-//                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
-                    self.outputBuffer.floatChannelData.memory[i] = received[i]
-                }
-                self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .Interrupts, completionHandler: nil)
+//                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
+////                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
+//                    self.outputBuffer.floatChannelData.memory[i] = received[i]
+//                }
+//                self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .Interrupts, completionHandler: nil)
             })
         } else {
             print("can't find input node")
@@ -90,7 +90,7 @@ class ViewController: UIViewController, UDPDelegate {
         engine.prepare()
         try! engine.start()
         
-        player.play()
+//        player.play()
     }
 
     override func didReceiveMemoryWarning() {
