@@ -51,16 +51,18 @@ class ViewController: UIViewController, UDPDelegate {
                 
 //                let bytes = UnsafeBufferPointer<Void>(start: channels[0], count: Int(buffer.frameLength))
                 
+                self.sendTest(data)
+                
 //                print(floats[0])
 //                print(buffer.frameLength)
                 
-                var received = [Float](count: dataArray.count, repeatedValue: 0)
-                data.getBytes(&received)
-                
-                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
-//                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
-                    self.outputBuffer.floatChannelData.memory[i] = received[i]
-                }
+//                var received = [Float](count: dataArray.count, repeatedValue: 0)
+//                data.getBytes(&received)
+//                
+//                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
+////                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
+//                    self.outputBuffer.floatChannelData.memory[i] = received[i]
+//                }
             })
         } else {
             print("can't find input node")
@@ -70,7 +72,7 @@ class ViewController: UIViewController, UDPDelegate {
         try! engine.start()
         
         player.play()
-        player.scheduleBuffer(outputBuffer, atTime: nil, options: .Loops, completionHandler: nil)
+//        player.scheduleBuffer(outputBuffer, atTime: nil, options: .Loops, completionHandler: nil)
     }
 
     override func didReceiveMemoryWarning() {
@@ -111,6 +113,53 @@ class ViewController: UIViewController, UDPDelegate {
     func udp(udp: UDP!, didFailToSendData data: NSData!, toAddress addr: NSData!, error: NSError!) {
         print("fail")
         print(error.description)
+    }
+    
+    var bufferOffset = 0
+    
+    func sendTest(data: NSData!) {
+        
+        print("receive")
+        
+        let count = Int(data.length / sizeof(Float))
+        
+        var received = [Float](count: count, repeatedValue: 0)
+        data.getBytes(&received, length: data.length)
+        
+        let bus = 0
+        print("data length: \(count)")
+        
+        let step = Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount)
+        
+        var i = 0
+        
+        while i < count && i + bufferOffset < Int(self.outputBuffer.frameLength) {
+            let index = i + bufferOffset
+            self.outputBuffer.floatChannelData.memory[index] = received[i]
+            i += step
+        }
+        
+        print("buffer offset: \(bufferOffset)")
+        
+        bufferOffset = bufferOffset + i
+        
+        if bufferOffset >= Int(self.outputBuffer.frameLength) {
+            print("schedule")
+            self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .InterruptsAtLoop, completionHandler: nil)
+            
+            var index = 0
+            while i < count {
+                self.outputBuffer.floatChannelData.memory[index] = received[i]
+                i += step
+                index += step
+            }
+            bufferOffset = index
+        }
+        
+//        for var i = 0; i < received.count; i += step {
+//            self.outputBuffer.floatChannelData.memory[i] = received[i]
+//        }
+//        self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .Interrupts, completionHandler: nil)
     }
 }
 
