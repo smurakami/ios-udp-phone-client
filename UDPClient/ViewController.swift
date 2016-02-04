@@ -46,9 +46,9 @@ class ViewController: UIViewController, UDPDelegate {
 //                }
                 
                 let frameLength = Int(buffer.frameLength)
-                let frameStep = Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount)
+                let frameStep = Int(input.outputFormatForBus(bus).channelCount)
                 
-                let sendSize = 1024
+                let sendSize = 1024 * 2
                 
                 var dataArray = [Float](count: sendSize, repeatedValue: 0)
                 
