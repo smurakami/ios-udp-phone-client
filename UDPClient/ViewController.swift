@@ -15,8 +15,8 @@ class ViewController: UIViewController, UDPDelegate {
     
     let engine = AVAudioEngine()
     
-    let player = AVAudioPlayerNode()
-    var outputBuffer = AVAudioPCMBuffer()
+//    let player = AVAudioPlayerNode()
+//    var outputBuffer = AVAudioPCMBuffer()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -27,12 +27,12 @@ class ViewController: UIViewController, UDPDelegate {
         print(udp.getIPAddress())
         
         let bufferSize = UInt32(16537) // 決め打ち。ここを動的に変更できるようにはしたい。
-        outputBuffer = AVAudioPCMBuffer(PCMFormat: player.outputFormatForBus(0), frameCapacity: bufferSize)
-        outputBuffer.frameLength = bufferSize
+//        outputBuffer = AVAudioPCMBuffer(PCMFormat: player.outputFormatForBus(0), frameCapacity: bufferSize)
+//        outputBuffer.frameLength = bufferSize
 
         
-        engine.attachNode(player)
-        engine.connect(player, to: engine.mainMixerNode, format: player.outputFormatForBus(0))
+//        engine.attachNode(player)
+//        engine.connect(player, to: engine.mainMixerNode, format: player.outputFormatForBus(0))
         
         if let input = engine.inputNode {
             let bus = 0
@@ -41,28 +41,48 @@ class ViewController: UIViewController, UDPDelegate {
                 let channels = UnsafeBufferPointer(start: buffer.floatChannelData, count: Int(buffer.format.channelCount))
                 let floats = UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength))
                 
-                var dataArray = Array<Float>(count: Int(buffer.frameLength), repeatedValue: 0)
+//                for var i = 0; i < frameLength; i += frameStep {
+//                    dataArray[i] = floats[i]
+//                }
                 
-                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
-                    dataArray[i] = floats[i]
+                let frameLength = Int(buffer.frameLength)
+                let frameStep = Int(input.outputFormatForBus(bus).channelCount)
+                
+//                let sendSize = 1024 * 2
+                let sendSize = 128
+                
+                var dataArray = [Float](count: sendSize, repeatedValue: 0)
+                
+//                var received = [Float](count: sendSize, repeatedValue: 0)
+                
+                for var start = 0; start < Int(buffer.frameLength); start += sendSize {
+                    let count = min(frameLength - start, sendSize)
+                    for var i = 0; i < count; i += frameStep {
+                        dataArray[i] = floats[start + i]
+                    }
+                    let data = NSData(bytes: dataArray, length: (sizeof(Float) * count))
+                    
+                    self.udp.sendData(data)
+//                    data.getBytes(&received, length: Int(data.length))
+//                    let receivedCount = Int(data.length / sizeof(Float))
                 }
                 
-                let data = NSData(bytes: dataArray, length: (sizeof(Float) * dataArray.count))
+//                let data = NSData(bytes: dataArray, length: (sizeof(Float) * dataArray.count))
+                
                 
 //                let bytes = UnsafeBufferPointer<Void>(start: channels[0], count: Int(buffer.frameLength))
-                
-                self.sendTest(data)
                 
 //                print(floats[0])
 //                print(buffer.frameLength)
                 
 //                var received = [Float](count: dataArray.count, repeatedValue: 0)
-//                data.getBytes(&received)
-//                
+//                data.getBytes(&received, length: Int(sizeof(Float) * received.count))
+                
 //                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
 ////                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
 //                    self.outputBuffer.floatChannelData.memory[i] = received[i]
 //                }
+//                self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .Interrupts, completionHandler: nil)
             })
         } else {
             print("can't find input node")
@@ -71,8 +91,7 @@ class ViewController: UIViewController, UDPDelegate {
         engine.prepare()
         try! engine.start()
         
-        player.play()
-//        player.scheduleBuffer(outputBuffer, atTime: nil, options: .Loops, completionHandler: nil)
+//        player.play()
     }
 
     override func didReceiveMemoryWarning() {
@@ -113,53 +132,6 @@ class ViewController: UIViewController, UDPDelegate {
     func udp(udp: UDP!, didFailToSendData data: NSData!, toAddress addr: NSData!, error: NSError!) {
         print("fail")
         print(error.description)
-    }
-    
-    var bufferOffset = 0
-    
-    func sendTest(data: NSData!) {
-        
-        print("receive")
-        
-        let count = Int(data.length / sizeof(Float))
-        
-        var received = [Float](count: count, repeatedValue: 0)
-        data.getBytes(&received, length: data.length)
-        
-        let bus = 0
-        print("data length: \(count)")
-        
-        let step = Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount)
-        
-        var i = 0
-        
-        while i < count && i + bufferOffset < Int(self.outputBuffer.frameLength) {
-            let index = i + bufferOffset
-            self.outputBuffer.floatChannelData.memory[index] = received[i]
-            i += step
-        }
-        
-        print("buffer offset: \(bufferOffset)")
-        
-        bufferOffset = bufferOffset + i
-        
-        if bufferOffset >= Int(self.outputBuffer.frameLength) {
-            print("schedule")
-            self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .InterruptsAtLoop, completionHandler: nil)
-            
-            var index = 0
-            while i < count {
-                self.outputBuffer.floatChannelData.memory[index] = received[i]
-                i += step
-                index += step
-            }
-            bufferOffset = index
-        }
-        
-//        for var i = 0; i < received.count; i += step {
-//            self.outputBuffer.floatChannelData.memory[i] = received[i]
-//        }
-//        self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .Interrupts, completionHandler: nil)
     }
 }
 
