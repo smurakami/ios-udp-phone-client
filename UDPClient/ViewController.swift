@@ -48,7 +48,8 @@ class ViewController: UIViewController, UDPDelegate {
                 let frameLength = Int(buffer.frameLength)
                 let frameStep = Int(input.outputFormatForBus(bus).channelCount)
                 
-                let sendSize = 1024 * 2
+//                let sendSize = 1024 * 2
+                let sendSize = 128
                 
                 var dataArray = [Float](count: sendSize, repeatedValue: 0)
                 
