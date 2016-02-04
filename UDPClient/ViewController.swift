@@ -7,21 +7,55 @@
 //
 
 import UIKit
+import AVFoundation
 
 class ViewController: UIViewController, UDPDelegate {
     
     let udp = UDP()
+    
+    let engine = AVAudioEngine()
+    
+    let player = AVAudioPlayerNode()
+    var outputBuffer = AVAudioPCMBuffer()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         
         udp.delegate = self
-        
         udp.startConnectedToHostName("192.168.10.5", port: 5000) // to iphone
-        
         print(udp.getIPAddress())
         
+        let bufferSize = UInt32(16537) // 決め打ち。ここを動的に変更できるようにはしたい。
+        outputBuffer = AVAudioPCMBuffer(PCMFormat: player.outputFormatForBus(0), frameCapacity: bufferSize)
+        outputBuffer.frameLength = bufferSize
+
+        
+        engine.attachNode(player)
+        engine.connect(player, to: engine.mainMixerNode, format: player.outputFormatForBus(0))
+        
+        if let input = engine.inputNode {
+            let bus = 0
+            input.installTapOnBus(bus, bufferSize: bufferSize, format: input.inputFormatForBus(bus), block: {
+                (buffer: AVAudioPCMBuffer!, time: AVAudioTime!) -> Void in
+                let channels = UnsafeBufferPointer(start: buffer.floatChannelData, count: Int(buffer.format.channelCount))
+                let floats = UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength))
+                print(floats[0])
+                print(buffer.frameLength)
+                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
+                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
+                }
+                print("tap")
+            })
+        } else {
+            print("can't find input node")
+        }
+        
+        engine.prepare()
+        try! engine.start()
+        
+        player.play()
+        player.scheduleBuffer(outputBuffer, atTime: nil, options: .Loops, completionHandler: nil)
     }
 
     override func didReceiveMemoryWarning() {
