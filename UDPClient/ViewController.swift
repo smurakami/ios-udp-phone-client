@@ -41,26 +41,47 @@ class ViewController: UIViewController, UDPDelegate {
                 let channels = UnsafeBufferPointer(start: buffer.floatChannelData, count: Int(buffer.format.channelCount))
                 let floats = UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength))
                 
-                var dataArray = Array<Float>(count: Int(buffer.frameLength), repeatedValue: 0)
+//                for var i = 0; i < frameLength; i += frameStep {
+//                    dataArray[i] = floats[i]
+//                }
                 
-                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
-                    dataArray[i] = floats[i]
+                let frameLength = Int(self.outputBuffer.frameLength)
+                let frameStep = Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount)
+                
+                let sendSize = 1024
+                
+                var dataArray = [Float](count: sendSize, repeatedValue: 0)
+                
+                var received = [Float](count: sendSize, repeatedValue: 0)
+                
+                for var start = 0; start < Int(self.outputBuffer.frameLength); start += sendSize {
+                    let count = min(frameLength - start, sendSize)
+                    for var i = 0; i < count; i += frameStep {
+                        dataArray[i] = floats[start + i]
+                    }
+                    let data = NSData(bytes: dataArray, length: (sizeof(Float) * count))
+                    
+                    data.getBytes(&received, length: Int(data.length))
+                    let receivedCount = Int(data.length / sizeof(Float))
+                    
                 }
                 
-                let data = NSData(bytes: dataArray, length: (sizeof(Float) * dataArray.count))
+//                let data = NSData(bytes: dataArray, length: (sizeof(Float) * dataArray.count))
+                
                 
 //                let bytes = UnsafeBufferPointer<Void>(start: channels[0], count: Int(buffer.frameLength))
                 
 //                print(floats[0])
 //                print(buffer.frameLength)
                 
-                var received = [Float](count: dataArray.count, repeatedValue: 0)
-                data.getBytes(&received)
+//                var received = [Float](count: dataArray.count, repeatedValue: 0)
+//                data.getBytes(&received, length: Int(sizeof(Float) * received.count))
                 
                 for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
 //                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
                     self.outputBuffer.floatChannelData.memory[i] = received[i]
                 }
+                self.player.scheduleBuffer(self.outputBuffer, atTime: nil, options: .Interrupts, completionHandler: nil)
             })
         } else {
             print("can't find input node")
@@ -70,7 +91,6 @@ class ViewController: UIViewController, UDPDelegate {
         try! engine.start()
         
         player.play()
-        player.scheduleBuffer(outputBuffer, atTime: nil, options: .Loops, completionHandler: nil)
     }
 
     override func didReceiveMemoryWarning() {
