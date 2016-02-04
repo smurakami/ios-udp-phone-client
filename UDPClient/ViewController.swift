@@ -40,12 +40,27 @@ class ViewController: UIViewController, UDPDelegate {
                 (buffer: AVAudioPCMBuffer!, time: AVAudioTime!) -> Void in
                 let channels = UnsafeBufferPointer(start: buffer.floatChannelData, count: Int(buffer.format.channelCount))
                 let floats = UnsafeBufferPointer(start: channels[0], count: Int(buffer.frameLength))
-                print(floats[0])
-                print(buffer.frameLength)
+                
+                var dataArray = Array<Float>(count: Int(buffer.frameLength), repeatedValue: 0)
+                
                 for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
-                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
+                    dataArray[i] = floats[i]
                 }
-                print("tap")
+                
+                let data = NSData(bytes: dataArray, length: (sizeof(Float) * dataArray.count))
+                
+//                let bytes = UnsafeBufferPointer<Void>(start: channels[0], count: Int(buffer.frameLength))
+                
+//                print(floats[0])
+//                print(buffer.frameLength)
+                
+                var received = [Float](count: dataArray.count, repeatedValue: 0)
+                data.getBytes(&received)
+                
+                for var i = 0; i < Int(self.outputBuffer.frameLength); i += Int(self.engine.mainMixerNode.outputFormatForBus(bus).channelCount) {
+//                    self.outputBuffer.floatChannelData.memory[i] = floats[i]
+                    self.outputBuffer.floatChannelData.memory[i] = received[i]
+                }
             })
         } else {
             print("can't find input node")
