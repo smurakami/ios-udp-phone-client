@@ -29,7 +29,6 @@ class ViewController: UIViewController, UDPDelegate {
         let bufferSize = UInt32(16537) // 決め打ち。ここを動的に変更できるようにはしたい。
 //        outputBuffer = AVAudioPCMBuffer(PCMFormat: player.outputFormatForBus(0), frameCapacity: bufferSize)
 //        outputBuffer.frameLength = bufferSize
-
         
 //        engine.attachNode(player)
 //        engine.connect(player, to: engine.mainMixerNode, format: player.outputFormatForBus(0))
